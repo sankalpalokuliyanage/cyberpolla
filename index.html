@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>කණා මුට්ටි Controller</title>
+    <title>කණා මුට්ටි Controller v3</title>
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
@@ -26,7 +26,6 @@
             border: none;
             border-radius: 50px;
             font-weight: bold;
-            cursor: pointer;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
@@ -40,63 +39,64 @@
             color: #fff;
             font-size: 40px;
             font-weight: bold;
-            cursor: pointer;
             display: none;
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            -webkit-tap-highlight-color: transparent;
         }
 
-        #hit-btn:active {
-            transform: scale(0.9);
-            background: #3e2723;
-        }
-
-        .info {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-transform: uppercase;
+        .hint {
+            font-size: 16px;
+            margin-top: 15px;
+            opacity: 0.8;
         }
     </style>
 </head>
 
 <body>
     <div class="info">අවුරුදු කණා මුට්ටිය</div>
-    <button id="init-btn">සම්බන්ධ වන්න</button>
-    <button id="hit-btn">ගහන්න!</button>
-    <div id="stat" style="margin-top: 20px; opacity: 0.7;">පද්ධතිය සක්‍රිය වෙමින්...</div>
+    <button id="init-btn">ආරම්භ කරන්න</button>
+    <button id="hit-btn">HIT</button>
+    <div class="hint" id="hint-text">Shake to Move!</div>
 
     <script>
         const ably = new Ably.Realtime('4dSGiw.0ZZshA:FZapw8AsdkTKkYqvTTxjwBhq2pPVmia9qtNjrXxHlvk');
         const channel = ably.channels.get('cyber-stream');
-        let lastStep = 0; let currentHeading = 0;
-
-        window.addEventListener('deviceorientation', (e) => {
-            if (e.alpha !== null) currentHeading = e.alpha;
-        });
+        let lastMove = 0;
 
         document.getElementById('init-btn').onclick = () => {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission().then(state => {
-                    if (state === 'granted') startSystem();
+                    if (state === 'granted') startControl();
                 });
-            } else { startSystem(); }
+            } else { startControl(); }
         };
 
-        function startSystem() {
+        function startControl() {
             document.getElementById('init-btn').style.display = 'none';
             document.getElementById('hit-btn').style.display = 'block';
-            document.getElementById('stat').innerText = "සූදානම්!";
+
             window.addEventListener('devicemotion', (e) => {
-                let acc = e.accelerationIncludingGravity;
-                let mag = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
-                if (mag > 12.5) {
-                    let now = Date.now();
-                    if (now - lastStep > 500) {
-                        channel.publish('action', { type: 'STEP', heading: currentHeading });
-                        lastStep = now;
-                        if (navigator.vibrate) navigator.vibrate(50);
-                    }
+                let acc = e.acceleration; // Gravity නැතිව
+                if (!acc.x) return;
+
+                let now = Date.now();
+                if (now - lastMove < 400) return; // වේගය පාලනයට
+
+                let threshold = 5.0; // ගැස්සීම හඳුනාගන්නා සීමාව
+                let moveType = null;
+
+                // X අක්ෂය (වමට/දකුණට)
+                if (acc.x > threshold) moveType = 'LEFT';
+                else if (acc.x < -threshold) moveType = 'RIGHT';
+
+                // Y අක්ෂය (ඉදිරියට/පසුපසට - iPhone එක අල්ලාගෙන සිටින ආකාරය අනුව)
+                else if (acc.y < -threshold) moveType = 'FORWARD';
+                else if (acc.y > threshold) moveType = 'BACKWARD';
+
+                if (moveType) {
+                    channel.publish('action', { type: 'MOVE', direction: moveType });
+                    lastMove = now;
+                    if (navigator.vibrate) navigator.vibrate(40);
+                    document.getElementById('hint-text').innerText = "Moving: " + moveType;
                 }
             });
         }
