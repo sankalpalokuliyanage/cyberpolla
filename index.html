@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>කණා මුට්ටි Controller v4</title>
+    <title>කණා මුට්ටි Controller Pro</title>
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
@@ -18,6 +18,20 @@
             margin: 0;
         }
 
+        #setup-ui {
+            padding: 20px;
+        }
+
+        input {
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff9800;
+            width: 80%;
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
         #init-btn {
             padding: 20px 40px;
             font-size: 22px;
@@ -26,7 +40,6 @@
             border: none;
             border-radius: 50px;
             font-weight: bold;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
         #hit-btn {
@@ -40,7 +53,6 @@
             font-size: 40px;
             font-weight: bold;
             display: none;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
         }
 
         #countdown-text {
@@ -48,61 +60,56 @@
             font-weight: bold;
             display: none;
         }
-
-        .hint {
-            font-size: 16px;
-            margin-top: 15px;
-            opacity: 0.8;
-        }
     </style>
 </head>
 
 <body>
-    <div id="main-ui">
-        <div class="info">අවුරුදු කණා මුට්ටිය</div><br>
+    <div id="setup-ui">
+        <h2 id="info-text">ඔබේ නම ඇතුළත් කරන්න</h2>
+        <input type="text" id="player-name" placeholder="Name Here...">
+        <br>
         <button id="init-btn">ආරම්භ කරන්න</button>
     </div>
+
     <div id="countdown-text"></div>
     <button id="hit-btn">HIT</button>
-    <div class="hint" id="hint-text">Shake to Move!</div>
 
     <script>
         const ably = new Ably.Realtime('4dSGiw.0ZZshA:FZapw8AsdkTKkYqvTTxjwBhq2pPVmia9qtNjrXxHlvk');
         const channel = ably.channels.get('cyber-stream');
         let lastMove = 0;
+        let pName = "";
 
         document.getElementById('init-btn').onclick = () => {
+            pName = document.getElementById('player-name').value.trim();
+            if (!pName) { alert("කරුණාකර නමක් ඇතුළත් කරන්න!"); return; }
+
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission().then(state => {
-                    if (state === 'granted') startCountdown();
+                    if (state === 'granted') startSequence();
                 });
-            } else { startCountdown(); }
+            } else { startSequence(); }
         };
 
-        function startCountdown() {
-            // Dashboard එකට පණිවිඩය යවනවා කවුන්ට්ඩවුන් එක පටන් ගන්න කියලා
-            channel.publish('action', { type: 'START_COUNTDOWN' });
+        function startSequence() {
+            document.getElementById('setup-ui').style.display = 'none';
+            // Dashboard එකට පණිවිඩය යවනවා නම සමඟ
+            channel.publish('action', { type: 'START_COUNTDOWN', name: pName });
 
-            const initBtn = document.getElementById('init-btn');
             const countdownEl = document.getElementById('countdown-text');
-            const infoEl = document.querySelector('.info');
-
-            initBtn.style.display = 'none';
-            infoEl.style.display = 'none';
             countdownEl.style.display = 'block';
 
             let count = 3;
             const timer = setInterval(() => {
                 if (count > 0) {
                     countdownEl.innerText = count;
-                    if (navigator.vibrate) navigator.vibrate(50);
                     count--;
                 } else {
                     clearInterval(timer);
                     countdownEl.innerText = "GO!";
-                    if (navigator.vibrate) navigator.vibrate(200);
                     setTimeout(() => {
                         countdownEl.style.display = 'none';
+                        document.getElementById('hit-btn').style.display = 'block';
                         startControl();
                     }, 500);
                 }
@@ -110,7 +117,6 @@
         }
 
         function startControl() {
-            document.getElementById('hit-btn').style.display = 'block';
             window.addEventListener('devicemotion', (e) => {
                 let acc = e.acceleration;
                 if (!acc || !acc.x) return;
@@ -125,14 +131,12 @@
                 if (moveType) {
                     channel.publish('action', { type: 'MOVE', direction: moveType });
                     lastMove = now;
-                    document.getElementById('hint-text').innerText = "Moving: " + moveType;
                 }
             });
         }
 
         document.getElementById('hit-btn').onclick = () => {
-            channel.publish('action', { type: 'HIT' });
-            if (navigator.vibrate) navigator.vibrate(200);
+            channel.publish('action', { type: 'HIT_REQUEST' });
         };
     </script>
 </body>
