@@ -20,36 +20,33 @@
         }
 
         #init-btn {
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 20px 40px;
+            font-size: 20px;
             background: #00f2ff;
             color: #000;
             border: none;
-            border-radius: 10px;
+            border-radius: 50px;
             font-weight: bold;
             cursor: pointer;
-            margin-bottom: 20px;
-            box-shadow: 0 0 20px #00f2ff;
+            box-shadow: 0 0 30px #00f2ff;
         }
 
         #hit-btn {
-            width: 60vw;
-            height: 60vw;
+            width: 65vw;
+            height: 65vw;
             margin: 10px auto;
             border-radius: 50%;
-            border: 5px solid #00f2ff;
+            border: 6px solid #00f2ff;
             background: none;
             color: #00f2ff;
-            font-size: 50px;
+            font-size: 60px;
             font-weight: bold;
-            text-shadow: 0 0 15px #00f2ff;
-            box-shadow: inset 0 0 20px #00f2ff, 0 0 40px #00f2ff;
+            text-shadow: 0 0 20px #00f2ff;
+            box-shadow: inset 0 0 30px #00f2ff, 0 0 50px #00f2ff;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
             display: none;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        /* ආරම්භයේදී සඟවා ඇත */
 
         #hit-btn:active {
             background: #00f2ff;
@@ -59,94 +56,86 @@
 
         .info {
             font-size: 18px;
-            margin-top: 10px;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
         }
 
         #debug {
-            font-size: 10px;
-            color: #555;
-            margin-top: 10px;
+            font-size: 12px;
+            color: #444;
+            margin-top: 15px;
         }
     </style>
 </head>
 
 <body>
     <div class="info">Cyber Polla Sync</div>
-
-    <button id="init-btn">INITIALIZE SYSTEM</button>
-
+    <button id="init-btn">START SYSTEM</button>
     <button id="hit-btn">HIT</button>
-
-    <div id="stat" style="font-size: 12px; opacity: 0.5; margin-top: 20px;">Waiting for User...</div>
-    <div id="debug">Motion: Off</div>
+    <div id="stat" style="font-size: 14px; opacity: 0.6; margin-top: 20px;">Ready for Pilot</div>
+    <div id="debug">Heading: 0° | Motion: 0.0</div>
 
     <script>
         const ably = new Ably.Realtime('4dSGiw.0ZZshA:FZapw8AsdkTKkYqvTTxjwBhq2pPVmia9qtNjrXxHlvk');
         const channel = ably.channels.get('cyber-stream');
+
         let lastStep = 0;
+        let currentHeading = 0;
 
         const initBtn = document.getElementById('init-btn');
         const hitBtn = document.getElementById('hit-btn');
         const stat = document.getElementById('stat');
         const debug = document.getElementById('debug');
 
-        ably.connection.on('connected', () => {
-            stat.innerText = "ABLY CONNECTED";
+        // ප්ලේයර් හැරෙන දිශාව මැනීම
+        window.addEventListener('deviceorientation', (e) => {
+            if (e.alpha !== null) {
+                currentHeading = e.alpha; // 0 to 360 degrees
+            }
         });
 
-        // සෙන්සර් අවසර ලබාගැනීමේ Logic එක
         initBtn.onclick = () => {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            startMotionDetection();
-                        } else {
-                            alert("Permission denied for sensors!");
-                        }
-                    })
-                    .catch(console.error);
+                DeviceMotionEvent.requestPermission().then(state => {
+                    if (state === 'granted') startSystem();
+                });
             } else {
-                // Non-iOS devices
-                startMotionDetection();
+                startSystem();
             }
         };
 
-        function startMotionDetection() {
+        function startSystem() {
             initBtn.style.display = 'none';
             hitBtn.style.display = 'block';
-            stat.innerText = "SYSTEMS ONLINE";
+            stat.innerText = "LINK ESTABLISHED";
 
             window.addEventListener('devicemotion', (e) => {
                 let acc = e.accelerationIncludingGravity;
-                if (!acc) return;
-
                 let mag = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
-                debug.innerText = "Motion: " + mag.toFixed(2);
+                debug.innerText = `Heading: ${Math.round(currentHeading)}° | Motion: ${mag.toFixed(1)}`;
 
-                if (mag > 11.5) { // ඇවිදින විට හෝ වනන විට Detect වන සීමාව
+                if (mag > 12.0) {
                     let now = Date.now();
-                    if (now - lastStep > 500) { // තත්පර භාගයකට වරක් පමණක් STEP එකක් ගනී
-                        channel.publish('action', { type: 'STEP' });
+                    if (now - lastStep > 500) {
+                        // පියවරත් සමගම දිශාව යවන්න
+                        channel.publish('action', { type: 'STEP', heading: currentHeading });
                         lastStep = now;
-                        if (navigator.vibrate) navigator.vibrate(30);
+                        if (navigator.vibrate) navigator.vibrate(40);
                     }
                 }
             });
         }
 
-        // HIT Button Logic
         hitBtn.onclick = () => {
             channel.publish('action', { type: 'HIT' });
-            if (navigator.vibrate) navigator.vibrate(100);
+            if (navigator.vibrate) navigator.vibrate(150);
         };
 
-        // ජයග්‍රහණයකදී හයියෙන් Vibrate වීම
         channel.subscribe('feedback', (msg) => {
-            if (msg.data === 'WIN' && navigator.vibrate) {
+            if (msg.data === 'WIN') {
                 navigator.vibrate([500, 100, 500, 100, 500]);
+                alert("MISSION ACCOMPLISHED! MUTTIYA KADUNA!");
             }
         });
     </script>
