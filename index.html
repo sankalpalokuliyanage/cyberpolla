@@ -2,13 +2,13 @@
 <html>
 
 <head>
-    <title>කණා මුට්ටි Controller Pro</title>
+    <title>Cyber Polla Controller Pro</title>
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
-            background: #5d4037;
-            color: #ffeb3b;
+            background: #1a1a1a;
+            color: #deff9a;
             font-family: sans-serif;
             text-align: center;
             display: flex;
@@ -16,118 +16,110 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-        }
-
-        #setup-ui {
-            padding: 20px;
+            overflow: hidden;
         }
 
         input {
             padding: 15px;
             border-radius: 10px;
-            border: 2px solid #ff9800;
+            border: 2px solid #deff9a;
             width: 80%;
             font-size: 18px;
             margin-bottom: 20px;
+            background: #333;
+            color: #fff;
             text-align: center;
         }
 
         #init-btn {
             padding: 20px 40px;
             font-size: 22px;
-            background: #ffeb3b;
-            color: #5d4037;
+            background: #deff9a;
+            color: #1a1a1a;
             border: none;
             border-radius: 50px;
             font-weight: bold;
         }
 
         #hit-btn {
-            width: 70vw;
-            height: 70vw;
-            margin: 10px auto;
+            width: 60vw;
+            height: 60vw;
+            margin: 20px auto;
             border-radius: 50%;
-            border: 10px solid #ff9800;
-            background: radial-gradient(circle, #8d6e63, #3e2723);
-            color: #fff;
+            border: 8px solid #deff9a;
+            background: radial-gradient(circle, #444, #000);
+            color: #deff9a;
             font-size: 40px;
             font-weight: bold;
             display: none;
+            box-shadow: 0 0 20px #deff9a;
         }
 
-        #countdown-text {
-            font-size: 80px;
-            font-weight: bold;
-            display: none;
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
         }
     </style>
 </head>
 
 <body>
     <div id="setup-ui">
-        <h2 id="info-text">ඔබේ නම ඇතුළත් කරන්න</h2>
-        <input type="text" id="player-name" placeholder="Name Here...">
+        <h2>CYBER POLLA</h2>
+        <input type="text" id="player-name" placeholder="ඔබේ නම...">
         <br>
-        <button id="init-btn">ආරම්භ කරන්න</button>
+        <button id="init-btn">CONNECT</button>
     </div>
 
-    <div id="countdown-text"></div>
     <button id="hit-btn">HIT</button>
+    <div id="status">Shake to Turn | Tilt to Move</div>
 
     <script>
         const ably = new Ably.Realtime('4dSGiw.0ZZshA:FZapw8AsdkTKkYqvTTxjwBhq2pPVmia9qtNjrXxHlvk');
         const channel = ably.channels.get('cyber-stream');
         let lastMove = 0;
-        let pName = "";
 
         document.getElementById('init-btn').onclick = () => {
-            pName = document.getElementById('player-name').value.trim();
-            if (!pName) { alert("කරුණාකර නමක් ඇතුළත් කරන්න!"); return; }
+            const pName = document.getElementById('player-name').value.trim();
+            if (!pName) return alert("නමක් ඇතුළත් කරන්න!");
 
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission().then(state => {
-                    if (state === 'granted') startSequence();
+                    if (state === 'granted') startApp(pName);
                 });
-            } else { startSequence(); }
+            } else { startApp(pName); }
         };
 
-        function startSequence() {
+        function startApp(name) {
             document.getElementById('setup-ui').style.display = 'none';
-            // Dashboard එකට පණිවිඩය යවනවා නම සමඟ
-            channel.publish('action', { type: 'START_COUNTDOWN', name: pName });
-
-            const countdownEl = document.getElementById('countdown-text');
-            countdownEl.style.display = 'block';
-
-            let count = 3;
-            const timer = setInterval(() => {
-                if (count > 0) {
-                    countdownEl.innerText = count;
-                    count--;
-                } else {
-                    clearInterval(timer);
-                    countdownEl.innerText = "GO!";
-                    setTimeout(() => {
-                        countdownEl.style.display = 'none';
-                        document.getElementById('hit-btn').style.display = 'block';
-                        startControl();
-                    }, 500);
-                }
-            }, 1000);
+            document.getElementById('hit-btn').style.display = 'block';
+            channel.publish('action', { type: 'START_COUNTDOWN', name: name });
+            startMotionLogic();
         }
 
-        function startControl() {
+        function startMotionLogic() {
             window.addEventListener('devicemotion', (e) => {
-                let acc = e.acceleration;
-                if (!acc || !acc.x) return;
+                let accWithG = e.accelerationIncludingGravity;
+                let accPure = e.acceleration;
+                if (!accWithG || !accPure) return;
+
                 let now = Date.now();
-                if (now - lastMove < 400) return;
-                let threshold = 5.0;
+                if (now - lastMove < 250) return;
+
                 let moveType = null;
-                if (acc.x > threshold) moveType = 'LEFT';
-                else if (acc.x < -threshold) moveType = 'RIGHT';
-                else if (acc.y < -threshold) moveType = 'FORWARD';
-                else if (acc.y > threshold) moveType = 'BACKWARD';
+                const shakeThresh = 10.0; // වේගවත් Shake එකක්
+                const tiltThresh = 3.5;   // සාමාන්‍ය ඇලවීමක්
+
+                // 1. SHAKE LOGIC (Turning)
+                if (accPure.x > shakeThresh) moveType = 'TURN_LEFT';
+                else if (accPure.x < -shakeThresh) moveType = 'TURN_RIGHT';
+
+                // 2. TILT LOGIC (Moving)
+                else if (accWithG.x > tiltThresh) moveType = 'LEFT';
+                else if (accWithG.x < -tiltThresh) moveType = 'RIGHT';
+                else if (accWithG.z > tiltThresh) moveType = 'FORWARD';
+                else if (accWithG.z < -tiltThresh) moveType = 'BACKWARD';
+
                 if (moveType) {
                     channel.publish('action', { type: 'MOVE', direction: moveType });
                     lastMove = now;
