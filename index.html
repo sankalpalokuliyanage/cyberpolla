@@ -1,22 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
     <title>Cyber Polla Controller Pro</title>
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* --- CSS VARIABLES & RESET --- */
         :root {
             --neon-green: #deff9a;
             --dark-bg: #0a0a0a;
             --glass: rgba(255, 255, 255, 0.1);
+            --neon-glow: 0 0 15px rgba(222, 255, 154, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background: var(--dark-bg);
-            background-image:
-                radial-gradient(circle at 50% 50%, #1a2a0a 0%, #0a0a0a 100%);
+            background-image: radial-gradient(circle at 50% 50%, #1a2a0a 0%, #0a0a0a 100%);
             color: var(--neon-green);
             font-family: 'Orbitron', sans-serif;
             text-align: center;
@@ -26,30 +33,35 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            padding: 20px;
             overflow: hidden;
         }
 
+        /* --- SETUP UI --- */
         #setup-ui {
             background: var(--glass);
             backdrop-filter: blur(10px);
             padding: 40px 20px;
             border-radius: 20px;
             border: 1px solid rgba(222, 255, 154, 0.3);
-            width: 85%;
+            width: 100%;
+            max-width: 400px;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
         }
 
         h2 {
             letter-spacing: 5px;
-            margin-bottom: 30px;
+            margin: 0 0 30px 0;
             text-shadow: 0 0 10px var(--neon-green);
+            font-size: 1.8rem;
         }
 
         input {
             padding: 15px;
             border-radius: 12px;
             border: 1px solid var(--neon-green);
-            width: 80%;
+            width: 100%;
             font-size: 16px;
             margin-bottom: 25px;
             background: rgba(0, 0, 0, 0.6);
@@ -57,11 +69,11 @@
             text-align: center;
             font-family: 'Orbitron', sans-serif;
             outline: none;
-            transition: 0.3s;
+            transition: 0.3s ease;
         }
 
         input:focus {
-            box-shadow: 0 0 15px var(--neon-green);
+            box-shadow: var(--neon-glow);
         }
 
         #init-btn {
@@ -74,7 +86,8 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 5px 15px rgba(222, 255, 154, 0.4);
-            transition: 0.2s;
+            transition: transform 0.1s ease;
+            width: 100%;
             text-transform: uppercase;
         }
 
@@ -82,6 +95,7 @@
             transform: scale(0.95);
         }
 
+        /* --- STRIKE BUTTON --- */
         #hit-btn {
             width: 250px;
             height: 250px;
@@ -97,6 +111,7 @@
             font-family: 'Orbitron', sans-serif;
             animation: pulse 2s infinite;
             outline: none;
+            margin: 0 auto;
         }
 
         @keyframes pulse {
@@ -113,9 +128,12 @@
             }
         }
 
+        /* --- STATUS & CONTROLS --- */
         #status-container {
-            margin-top: 30px;
+            margin-top: 20px;
             display: none;
+            width: 100%;
+            max-width: 400px;
         }
 
         #status {
@@ -123,86 +141,87 @@
             color: rgba(222, 255, 154, 0.6);
             letter-spacing: 2px;
             text-transform: uppercase;
+            margin-bottom: 5px;
         }
 
         .hint {
             font-size: 10px;
-            margin-top: 10px;
-            color: #555;
+            margin-bottom: 20px;
+            color: #777;
         }
 
         .controls-list {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            margin-top: 25px;
-            width: 80%;
-            margin-left: auto;
-            margin-right: auto;
+            width: 100%;
         }
 
         .control-item {
             background: rgba(255, 255, 255, 0.05);
-            padding: 8px;
+            padding: 10px;
             border-radius: 8px;
-            font-size: 11px;
+            font-size: 10px;
             color: rgba(222, 255, 154, 0.8);
             border-left: 3px solid var(--neon-green);
+            text-align: left;
         }
 
         .key {
             color: var(--neon-green);
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12px;
             margin-right: 5px;
         }
 
-        .ui-credits {
+        /* --- CREDITS UI --- */
+        #ui-credits {
             position: absolute;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             align-items: center;
-            gap: 20px;
-            z-index: 100;
+            gap: 15px;
+            width: 90%;
+            max-width: 400px;
+            z-index: 5;
         }
 
         .slsa-logo-wrapper {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             background: #fff;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2), 0 0 0 4px rgba(222, 255, 154, 0.3);
+            box-shadow: 0 0 15px rgba(222, 255, 154, 0.3);
             overflow: hidden;
-            border: 2px solid #fff;
+            flex-shrink: 0;
         }
 
         .credits-info {
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
-            padding: 10px 25px;
-            border-radius: 12px;
+            padding: 8px 15px;
+            border-radius: 10px;
             border-left: 4px solid var(--neon-green);
             text-align: left;
+            flex-grow: 1;
         }
 
         .credits-name {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: 1px;
             color: var(--neon-green);
             text-transform: uppercase;
             margin: 0;
         }
 
         .credits-uni {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.7);
-            text-transform: uppercase;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
             margin-top: 2px;
         }
     </style>
@@ -234,10 +253,10 @@
 
     <div id="ui-credits">
         <div class="slsa-logo-wrapper">
-            <img src="slsa.jpeg" alt="SLSA Logo" style="width: 60px; height: 60px;">
+            <img src="slsa.jpeg" alt="SLSA Logo" style="width: 100%; height: auto;">
         </div>
         <div class="credits-info">
-            <div class="credits-name">Developed by Sankalpa Lokuliyanage</div>
+            <div class="credits-name">Sankalpa Lokuliyanage</div>
             <div class="credits-uni">Kyungpook National University (KNU)</div>
         </div>
     </div>
@@ -255,7 +274,9 @@
                 DeviceMotionEvent.requestPermission().then(state => {
                     if (state === 'granted') startApp(pName);
                 });
-            } else { startApp(pName); }
+            } else {
+                startApp(pName);
+            }
         };
 
         function startApp(name) {
@@ -302,7 +323,6 @@
         }
 
         document.getElementById('hit-btn').onclick = () => {
-            // Haptic feedback (Vibration)
             if (navigator.vibrate) navigator.vibrate(100);
             channel.publish('action', { type: 'HIT_REQUEST' });
         };
