@@ -104,21 +104,26 @@
                 if (!accWithG || !accPure) return;
 
                 let now = Date.now();
-                if (now - lastMove < 250) return;
+                if (now - lastMove < 200) return;
 
                 let moveType = null;
-                const shakeThresh = 10.0; // වේගවත් Shake එකක්
-                const tiltThresh = 3.5;   // සාමාන්‍ය ඇලවීමක්
+                const shakeThresh = 10.0;
+                const tiltThresh = 3.0; // මෙතන අගය ඔයාට අවශ්‍ය විදිහට වෙනස් කරන්න
 
                 // 1. SHAKE LOGIC (Turning)
                 if (accPure.x > shakeThresh) moveType = 'TURN_LEFT';
                 else if (accPure.x < -shakeThresh) moveType = 'TURN_RIGHT';
 
                 // 2. TILT LOGIC (Moving)
-                else if (accWithG.x > tiltThresh) moveType = 'LEFT';
-                else if (accWithG.x < -tiltThresh) moveType = 'RIGHT';
                 else if (accWithG.z > tiltThresh) moveType = 'FORWARD';
                 else if (accWithG.z < -tiltThresh) moveType = 'BACKWARD';
+                else if (accWithG.x > tiltThresh) moveType = 'LEFT';
+                else if (accWithG.x < -tiltThresh) moveType = 'RIGHT';
+
+                // 3. STOP LOGIC (Neutral Position)
+                else {
+                    moveType = 'STOP';
+                }
 
                 if (moveType) {
                     channel.publish('action', { type: 'MOVE', direction: moveType });
